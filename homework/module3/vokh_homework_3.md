@@ -3,7 +3,7 @@
 **Студентка:** Вох Ірина  
 **Дисципліна:** Комп'ютерні мережі (ІПЗ, 5 семестр)
 
-> **Примітка щодо середовища.** Команди виконувались на macOS (Mac Studio, macOS 26.6.2). Утиліти `curl` і `openssl` є в системі за замовчуванням і працюють так само, як у Linux. Для завдання 2 я підняла власний тестовий API локально на `127.0.0.1:8081` (Python, модуль `http.server`), бо курс більше не дозволяє використовувати jsonplaceholder.
+> **Примітка щодо середовища.** Команди виконувались у Linux: Ubuntu 24.04.5 LTS у Docker-контейнері на моєму Mac (Docker Desktop). Контейнер запускала так: `docker run --rm --cap-add NET_ADMIN --cap-add NET_RAW ubuntu:24.04 bash`, потрібні утиліти встановила через `apt-get install curl openssl python3 ...`. Для завдання 2 я підняла власний тестовий API всередині контейнера на `0.0.0.0:8081` (Python, модуль `http.server`), бо курс більше не дозволяє використовувати jsonplaceholder.
 
 ---
 
@@ -68,11 +68,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         self._send(200, [])
 
-HTTPServer(("127.0.0.1", 8081), Handler).serve_forever()
+HTTPServer(("0.0.0.0", 8081), Handler).serve_forever()
 ```
 
 ```bash
-python3 test_api.py &     # запуск сервера у фоні
+python3 test_api.py &     # запуск сервера у фоні (всередині контейнера)
 
 curl -i -X POST -d "title=foo&body=bar&userId=1" http://127.0.0.1:8081/posts
 curl -i http://127.0.0.1:8081/posts
@@ -83,15 +83,15 @@ curl -i http://127.0.0.1:8081/posts
 ```text
 --- POST
 HTTP/1.0 201 Created
-Server: BaseHTTP/0.6 Python/3.12.13
-Date: Sat, 10 Oct 2026 10:38:45 GMT
+Server: BaseHTTP/0.6 Python/3.12.3
+Date: Sat, 10 Oct 2026 13:04:34 GMT
 Content-Type: application/json
 
 {"id": 101, "received": "title=foo&body=bar&userId=1"}
 --- GET
 HTTP/1.0 200 OK
-Server: BaseHTTP/0.6 Python/3.12.13
-Date: Sat, 10 Oct 2026 10:38:45 GMT
+Server: BaseHTTP/0.6 Python/3.12.3
+Date: Sat, 10 Oct 2026 13:04:34 GMT
 Content-Type: application/json
 
 []
@@ -134,19 +134,20 @@ openssl s_client -connect wikipedia.org:443 -servername wikipedia.org
 ### Результат (скорочено)
 
 ```text
-subject=CN=*.wikipedia.org
-issuer=C=US, O=Let's Encrypt, CN=YE2
+subject=CN = *.wikipedia.org
+issuer=C = US, O = Let's Encrypt, CN = YE2
 New, TLSv1.3, Cipher is TLS_AES_128_GCM_SHA256
-Protocol: TLSv1.3
 Verify return code: 0 (ok)
 ```
+
+Версію TLS видно в рядку `New, TLSv1.3, ...`: саме там openssl показує узгоджений протокол і шифр.
 
 ### Аналіз
 
 | Поле | Значення | Пояснення |
 | --- | --- | --- |
-| **Subject** | `CN=*.wikipedia.org` | Кому виданий сертифікат. `*` означає **wildcard-сертифікат**: він дійсний для будь-якого піддомену (`en.wikipedia.org`, `uk.wikipedia.org` тощо). |
-| **Issuer** | `C=US, O=Let's Encrypt, CN=YE2` | Хто видав сертифікат: центр сертифікації (CA) **Let's Encrypt**, проміжний сертифікат `YE2`. Країна — США. |
+| **Subject** | `CN = *.wikipedia.org` | Кому виданий сертифікат. `*` означає **wildcard-сертифікат**: він дійсний для будь-якого піддомену (`en.wikipedia.org`, `uk.wikipedia.org` тощо). |
+| **Issuer** | `C = US, O = Let's Encrypt, CN = YE2` | Хто видав сертифікат: центр сертифікації (CA) **Let's Encrypt**, проміжний сертифікат `YE2`. Країна — США. |
 | **Версія TLS** | `TLSv1.3` | Найновіша версія протоколу. Швидше рукостискання (1 RTT) і лише сучасні надійні шифри. |
 | **Шифр** | `TLS_AES_128_GCM_SHA256` | Набір алгоритмів для захисту даних (див. нижче). |
 | **Verify return code** | `0 (ok)` | Ланцюжок сертифікатів перевірено успішно: він веде до кореневого CA, якому довіряє система. Сертифікат дійсний. |
@@ -175,9 +176,9 @@ curl -sI https://github.com | grep -i set-cookie
 ### Результат
 
 ```text
-set-cookie: _gh_sess=TPgyvQOI%2FA...; path=/; HttpOnly; secure; SameSite=Lax
-set-cookie: _octo=GH1.1.208665...; expires=Sun, 10 Oct 2027 10:38:46 GMT; domain=.github.com; path=/; secure; SameSite=Lax
-set-cookie: logged_in=no; expires=Sun, 10 Oct 2027 10:38:46 GMT; domain=.github.com; path=/; HttpOnly; secure; SameSite=Lax
+set-cookie: _gh_sess=E%2FeWNIiAfc...; path=/; HttpOnly; secure; SameSite=Lax
+set-cookie: _octo=GH1.1.209674...; expires=Sun, 10 Oct 2027 13:04:35 GMT; domain=.github.com; path=/; secure; SameSite=Lax
+set-cookie: logged_in=no; expires=Sun, 10 Oct 2027 13:04:35 GMT; domain=.github.com; path=/; HttpOnly; secure; SameSite=Lax
 ```
 
 > Значення cookies `_gh_sess` і `_octo` я обрізала (`...`) з міркувань приватності, бо репозиторій публічний.
